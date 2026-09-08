@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>THC Hit Calibration</title>
+  <style>
+    :root {
+      --bg: #eee9df;
+      --paper: #fffdf7;
+      --ink: #262821;
+      --muted: #6d7168;
+      --line: #d6d0c4;
+      --green: #446a50;
+      --green-dark: #2f4e39;
+      --green-soft: #e8eee8;
+      --warm: #f3ece0;
+      --warning: #765735;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.18)),
+        var(--bg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    .page {
+      width: min(940px, calc(100% - 28px));
+      margin: 32px auto 64px;
+    }
+
+    header {
+      max-width: 760px;
+      margin-bottom: 24px;
+    }
+
+    h1, h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 600;
+      letter-spacing: -.025em;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2.2rem, 8vw, 4rem);
+      line-height: .98;
+    }
+
+    h2 {
+      font-size: 1.32rem;
+      margin: 0 0 14px;
+    }
+
+    p { margin: 0; }
+
+    .intro {
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .note {
+      margin-top: 14px;
+      padding: 11px 13px;
+      border-left: 3px solid var(--warning);
+      background: rgba(255,255,255,.48);
+      color: #5b482f;
+      font-size: .91rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 18px;
+    }
+
+    .wide { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      margin: 13px 0 6px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    input, textarea, button {
+      font: inherit;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid #c7c1b5;
+      border-radius: 8px;
+      background: #fffefb;
+      color: var(--ink);
+      outline: none;
+      font-size: 16px;
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(68,106,80,.12);
+    }
+
+    .range-line {
+      display: grid;
+      grid-template-columns: 1fr 58px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--green);
+    }
+
+    .range-number {
+      text-align: center;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #faf7f0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .effects {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .effects label {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .effects input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .effects span {
+      display: inline-block;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #faf8f2;
+      color: var(--ink);
+      font-size: .86rem;
+      user-select: none;
+    }
+
+    .effects input:checked + span {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green-dark);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 16px;
+    }
+
+    button {
+      min-height: 42px;
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8f5ee;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    button.primary {
+      color: white;
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    button.danger {
+      color: #6a382f;
+      background: #fbf0ed;
+      border-color: #dfc7c0;
+    }
+
+    button:focus-visible {
+      outline: 3px solid rgba(68,106,80,.22);
+      outline-offset: 2px;
+    }
+
+    .big-number {
+      margin: 4px 0 8px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 3.8rem;
+      line-height: 1;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .estimate {
+      margin-top: 14px;
+      padding: 15px;
+      border-radius: 10px;
+      background: var(--green-soft);
+      min-height: 132px;
+    }
+
+    .estimate strong {
+      display: block;
+      margin-bottom: 5px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 5px 9px;
+      border: 1px solid #c7d3c9;
+      border-radius: 999px;
+      background: #f9fbf8;
+      color: #385443;
+      font-size: .82rem;
+    }
+
+    .history {
+      display: grid;
+      gap: 0;
+    }
+
+    .entry {
+      display: grid;
+      grid-template-columns: 70px 74px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .entry:first-child { border-top: 0; }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--warm);
+      text-align: center;
+      font-size: .82rem;
+    }
+
+    .entry-text {
+      min-width: 0;
+    }
+
+    .entry-text b {
+      display: block;
+      font-size: .91rem;
+      margin-bottom: 2px;
+    }
+
+    .entry-text span {
+      display: block;
+      color: var(--muted);
+      font-size: .83rem;
+      overflow-wrap: anywhere;
+    }
+
+    .delete-entry {
+      min-height: 34px;
+      padding: 6px 9px;
+      font-size: .8rem;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 5px 0 2px;
+    }
+
+    .status {
+      min-height: 1.2em;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+
+    .meter {
+      margin-top: 10px;
+      height: 10px;
+      border-radius: 99px;
+      overflow: hidden;
+      background: #dce4dd;
+      border: 1px solid #ccd7ce;
+    }
+
+    .meter > div {
+      height: 100%;
+      width: 0;
+      background: var(--green);
+      transition: width .2s ease;
+    }
+
+    .calibration-quality {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .wide { grid-column: auto; }
+      .entry {
+        grid-template-columns: 62px 66px 1fr;
+      }
+      .entry .delete-entry {
+        grid-column: 3;
+        justify-self: start;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .meter > div { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>THC hit calibration</h1>
+      <p class="intro">
+        Log how many hits you took and how it actually felt. The page uses those entries as your personal calibration
+        range, then estimates what your current hit count may feel like.
+      </p>
+      <div class="note">
+        A hit is not a standardized dose. Potency, device, inhale size, tolerance, timing, food, and sleep can all change
+        the result. Predictions here are rough and based on your own history, not a recommendation to take more.
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Add a calibration</h2>
+
+        <label for="hits">Number of hits</label>
+        <input id="hits" type="number" min="0" max="100" step="1" value="1">
+
+        <label for="strength">How strong did it feel? (0–10)</label>
+        <div class="range-line">
+          <input id="strength" type="range" min="0" max="10" step="0.5" value="4">
+          <div class="range-number" id="strengthValue">4.0</div>
+        </div>
+
+        <label>Effects you noticed</label>
+        <div class="effects" id="effectChoices">
+          <label><input type="checkbox" value="relaxed"><span>relaxed</span></label>
+          <label><input type="checkbox" value="euphoric"><span>euphoric</span></label>
+          <label><input type="checkbox" value="giggly"><span>giggly</span></label>
+          <label><input type="checkbox" value="music enhancement"><span>music enhancement</span></label>
+          <label><input type="checkbox" value="focused"><span>focused</span></label>
+          <label><input type="checkbox" value="dreamy"><span>dreamy</span></label>
+          <label><input type="checkbox" value="heavy body"><span>heavy body</span></label>
+          <label><input type="checkbox" value="time distortion"><span>time distortion</span></label>
+          <label><input type="checkbox" value="dry mouth"><span>dry mouth</span></label>
+          <label><input type="checkbox" value="hungry"><span>hungry</span></label>
+          <label><input type="checkbox" value="anxious"><span>anxious</span></label>
+          <label><input type="checkbox" value="dizzy"><span>dizzy</span></label>
+        </div>
+
+        <label for="note">Notes <span class="muted">(optional)</span></label>
+        <textarea id="note" placeholder="Example: cart, medium pulls, after dinner. Calm, floaty, music sounded fuller."></textarea>
+
+        <div class="actions">
+          <button type="button" class="primary" id="saveEntry">Save calibration</button>
+          <button type="button" id="clearForm">Clear</button>
+        </div>
+        <div class="status" id="formStatus" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <h2>Current session</h2>
+        <div class="muted">Current hit count</div>
+        <div class="big-number" id="currentHits">0</div>
+
+        <label for="setHits">Set count manually</label>
+        <input id="setHits" type="number" min="0" max="100" step="1" value="0">
+
+        <div class="actions">
+          <button type="button" class="primary" id="addHit">+ Add a hit</button>
+          <button type="button" id="removeHit">− Remove one</button>
+          <button type="button" id="resetSession">Reset</button>
+        </div>
+
+        <div class="estimate" id="estimate" aria-live="polite">
+          <strong>No personal estimate yet</strong>
+          <p class="muted">Add at least one calibration entry, then set your current hit count.</p>
+        </div>
+      </section>
+
+      <section class="card wide">
+        <h2>Your calibration range</h2>
+        <div id="history" class="history"></div>
+        <div class="actions">
+          <button type="button" class="danger" id="clearAll">Clear all calibration data</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const DATA_KEY = "thc-calibration-data-v2";
+      const SESSION_KEY = "thc-calibration-session-v2";
+
+      const $ = (selector) => document.querySelector(selector);
+      const hitsInput = $("#hits");
+      const strengthInput = $("#strength");
+      const strengthValue = $("#strengthValue");
+      const noteInput = $("#note");
+      const effectChoices = $("#effectChoices");
+      const formStatus = $("#formStatus");
+      const currentHitsEl = $("#currentHits");
+      const setHitsInput = $("#setHits");
+      const estimateEl = $("#estimate");
+      const historyEl = $("#history");
+
+      let entries = readEntries();
+      let currentHits = readSessionHits();
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function safeNumber(value, fallback = 0) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
+      }
+
+      function validEntry(entry) {
+        return entry &&
+          Number.isFinite(Number(entry.hits)) &&
+          Number.isFinite(Number(entry.strength)) &&
+          Number(entry.hits) >= 0 &&
+          Number(entry.strength) >= 0 &&
+          Number(entry.strength) <= 10;
+      }
+
+      function readEntries() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(DATA_KEY) || "[]");
+          return Array.isArray(parsed) ? parsed.filter(validEntry) : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function readSessionHits() {
+        const n = safeNumber(localStorage.getItem(SESSION_KEY), 0);
+        return clamp(Math.round(n), 0, 100);
+      }
+
+      function save() {
+        localStorage.setItem(DATA_KEY, JSON.stringify(entries));
+        localStorage.setItem(SESSION_KEY, String(currentHits));
+      }
+
+      function getSelectedEffects() {
+        return [...effectChoices.querySelectorAll("input:checked")].map(input => input.value);
+      }
+
+      function intensityLabel(n) {
+        if (n < 1.5) return "barely noticeable";
+        if (n < 3.5) return "light";
+        if (n < 5.5) return "moderate";
+        if (n < 7.5) return "strong";
+        if (n < 9) return "very strong";
+        return "overwhelming";
+      }
+
+      function average(numbers) {
+        return numbers.length ? numbers.reduce((a, b) => a + b, 0) / numbers.length : 0;
+      }
+
+      function estimateForHits(hits) {
+        if (!entries.length) return null;
+
+        const grouped = new Map();
+
+        for (const entry of entries) {
+          if (!grouped.has(entry.hits)) grouped.set(entry.hits, []);
+          grouped.get(entry.hits).push(entry);
+        }
+
+        const points = [...grouped.entries()]
+          .map(([hitCount, group]) => ({
+            hits: Number(hitCount),
+            strength: average(group.map(x => Number(x.strength))),
+            sourceEntries: group
+          }))
+          .sort((a, b) => a.hits - b.hits);
+
+        const exact = points.find(p => p.hits === hits);
+        if (exact) {
+          return {
+            strength: exact.strength,
+            confidence: exact.sourceEntries.length >= 2 ? "better" : "medium",
+            sourceEntries: exact.sourceEntries
+          };
+        }
+
+        let lower = null;
+        let upper = null;
+
+        for (const point of points) {
+          if (point.hits < hits) lower = point;
+          if (point.hits > hits) {
+            upper = point;
+            break;
+          }
+        }
+
+        if (lower && upper) {
+          const span = upper.hits - lower.hits;
+          const t = span === 0 ? 0 : (hits - lower.hits) / span;
+          const strength = lower.strength + (upper.strength - lower.strength) * t;
+
+          return {
+            strength: clamp(strength, 0, 10),
+            confidence: "medium",
+            sourceEntries: [...lower.sourceEntries, ...upper.sourceEntries]
+          };
+        }
+
+        const nearest = points
+          .map(p => ({ p, d: Math.abs(p.hits - hits) }))
+          .sort((a, b) => a.d - b.d)
+          .slice(0, Math.min(2, points.length));
+
+        let predicted;
+
+        if (points.length >= 2) {
+          const p1 = points[points.length - 2];
+          const p2 = points[points.length - 1];
+
+          if (hits < points[0].hits) {
+            const a = points[0];
+            const b = points[1];
+            const slope = (b.strength - a.strength) / Math.max(1, b.hits - a.hits);
+            predicted = a.strength - slope * (a.hits - hits);
+          } else {
+            const slope = (p2.strength - p1.strength) / Math.max(1, p2.hits - p1.hits);
+            predicted = p2.strength + slope * (hits - p2.hits);
+          }
+        } else {
+          const only = points[0];
+          predicted = only.hits > 0 ? only.strength * (hits / only.hits) : only.strength;
+        }
+
+        return {
+          strength: clamp(predicted, 0, 10),
+          confidence: "low",
+          sourceEntries: nearest.flatMap(x => x.p.sourceEntries)
+        };
+      }
+
+      function likelyEffects(hits, predictedStrength) {
+        if (!entries.length) return [];
+
+        const scored = entries
+          .map(entry => {
+            const hitDistance = Math.abs(entry.hits - hits);
+            const strengthDistance = Math.abs(entry.strength - predictedStrength);
+            const score = 1 / (1 + hitDistance + strengthDistance * 0.65);
+            return { entry, score };
+          })
+          .sort((a, b) => b.score - a.score);
+
+        const effectScores = new Map();
+
+        for (const { entry, score } of scored) {
+          for (const effect of (entry.effects || [])) {
+            effectScores.set(effect, (effectScores.get(effect) || 0) + score);
+          }
+        }
+
+        return [...effectScores.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6)
+          .map(([effect]) => effect);
+      }
+
+      function calibrationQuality() {
+        if (entries.length === 0) return "No calibration data yet.";
+        const uniqueCounts = new Set(entries.map(x => x.hits)).size;
+        if (entries.length >= 6 && uniqueCounts >= 4) return "Calibration quality: fairly well sampled.";
+        if (entries.length >= 3 && uniqueCounts >= 2) return "Calibration quality: developing.";
+        return "Calibration quality: sparse, so predictions may swing around.";
+      }
+
+      function renderEstimate() {
+        currentHitsEl.textContent = currentHits;
+        setHitsInput.value = currentHits;
+
+        const result = estimateForHits(currentHits);
+
+        if (!result) {
+          estimateEl.innerHTML = `
+            <strong>No personal estimate yet</strong>
+            <p class="muted">Add a calibration entry first.</p>
+          `;
+          return;
+        }
+
+        const strength = clamp(result.strength, 0, 10);
+        const label = intensityLabel(strength);
+        const effects = likelyEffects(currentHits, strength);
+        const effectTags = effects.length
+          ? `<div class="tag-row">${effects.map(effect => `<span class="tag">${escapeHtml(effect)}</span>`).join("")}</div>`
+          : `<p class="muted" style="margin-top:8px">No effect tags are close enough yet. Add more observations to make this more personal.</p>`;
+
+        const confidenceText = result.confidence === "better"
+          ? "This hit count has repeated calibration entries."
+          : result.confidence === "medium"
+          ? "This sits inside or close to your calibration range."
+          : "This is outside or poorly covered by your calibration range, so treat it as especially uncertain.";
+
+        estimateEl.innerHTML = `
+          <strong>${label} · about ${strength.toFixed(1)}/10</strong>
+          <div class="meter" aria-hidden="true"><div style="width:${strength * 10}%"></div></div>
+          <p class="muted" style="margin-top:9px">${confidenceText}</p>
+          ${effectTags}
+          <div class="calibration-quality">${calibrationQuality()}</div>
+        `;
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function renderHistory() {
+        if (!entries.length) {
+          historyEl.innerHTML = `<div class="empty">No calibration entries yet.</div>`;
+          renderEstimate();
+          return;
+        }
+
+        const sorted = entries
+          .map((entry, index) => ({ ...entry, originalIndex: index }))
+          .sort((a, b) => a.hits - b.hits || a.strength - b.strength);
+
+        historyEl.innerHTML = sorted.map(entry => {
+          const effects = (entry.effects || []).length
+            ? entry.effects.join(", ")
+            : "No effects tagged";
+
+          const note = entry.note ? ` · ${entry.note}` : "";
+
+          return `
+            <div class="entry">
+              <span class="pill">${entry.hits} hit${entry.hits === 1 ? "" : "s"}</span>
+              <span class="pill">${Number(entry.strength).toFixed(1)}/10</span>
+              <div class="entry-text">
+                <b>${escapeHtml(effects)}</b>
+                <span>${escapeHtml(note || "No note")}</span>
+              </div>
+              <button type="button" class="delete-entry" data-index="${entry.originalIndex}">delete</button>
+            </div>
+          `;
+        }).join("");
+
+        historyEl.querySelectorAll(".delete-entry").forEach(button => {
+          button.addEventListener("click", () => {
+            const index = Number(button.dataset.index);
+            if (!Number.isInteger(index) || !entries[index]) return;
+            entries.splice(index, 1);
+            save();
+            renderHistory();
+          });
+        });
+
+        renderEstimate();
+      }
+
+      function setCurrentHits(value) {
+        currentHits = clamp(Math.round(safeNumber(value, currentHits)), 0, 100);
+        save();
+        renderEstimate();
+      }
+
+      strengthInput.addEventListener("input", () => {
+        strengthValue.textContent = safeNumber(strengthInput.value, 0).toFixed(1);
+      });
+
+      $("#saveEntry").addEventListener("click", () => {
+        const hits = clamp(Math.round(safeNumber(hitsInput.value, -1)), 0, 100);
+        const strength = clamp(safeNumber(strengthInput.value, 0), 0, 10);
+
+        if (safeNumber(hitsInput.value, -1) < 0) {
+          formStatus.textContent = "Enter a valid hit count.";
+          return;
+        }
+
+        entries.push({
+          hits,
+          strength,
+          effects: getSelectedEffects(),
+          note: noteInput.value.trim(),
+          createdAt: Date.now()
+        });
+
+        save();
+        formStatus.textContent = "Calibration saved.";
+        renderHistory();
+      });
+
+      $("#clearForm").addEventListener("click", () => {
+        hitsInput.value = "1";
+        strengthInput.value = "4";
+        strengthValue.textContent = "4.0";
+        noteInput.value = "";
+        effectChoices.querySelectorAll("input").forEach(input => input.checked = false);
+        formStatus.textContent = "";
+      });
+
+      setHitsInput.addEventListener("change", () => setCurrentHits(setHitsInput.value));
+
+      $("#addHit").addEventListener("click", () => {
+        setCurrentHits(currentHits + 1);
+      });
+
+      $("#removeHit").addEventListener("click", () => {
+        setCurrentHits(currentHits - 1);
+      });
+
+      $("#resetSession").addEventListener("click", () => {
+        setCurrentHits(0);
+      });
+
+      $("#clearAll").addEventListener("click", () => {
+        if (!confirm("Clear all saved calibration entries?")) return;
+        entries = [];
+        save();
+        renderHistory();
+      });
+
+      renderHistory();
+    })();
+  </script>
+</body>
+</html>
