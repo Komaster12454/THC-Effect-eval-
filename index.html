@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>THC Effect Eval</title>
+  <title>THC Hit Calibration</title>
   <style>
     :root {
       --bg: #eee9df;
@@ -336,9 +336,14 @@
     }
 
     .calibration-quality {
-      margin-top: 7px;
+      margin-top: 10px;
       color: var(--muted);
       font-size: .82rem;
+    }
+
+    .estimate b {
+      color: var(--ink);
+      font-size: .9rem;
     }
 
     @media (max-width: 720px) {
@@ -511,6 +516,78 @@
         return "overwhelming";
       }
 
+      function detailedProfile(n) {
+        if (n < 1.5) {
+          return {
+            mind: "You may mostly feel normal, with subtle shifts in attention or thought flow.",
+            body: "A slight body looseness, warmth, or heaviness may show up.",
+            perception: "Music, texture, light, or taste may feel a little more noticeable.",
+            mood: "Mood may lift slightly, or you may simply feel calmer.",
+            coordination: "Usually close to baseline, though reaction time can still be affected.",
+            time: "Time usually feels normal or only mildly stretched.",
+            deeper: "If the intensity rises, the first changes are often stronger body relaxation, more noticeable sensory enhancement, and a clearer change in thought flow."
+          };
+        }
+
+        if (n < 3.5) {
+          return {
+            mind: "Thoughts may feel looser, more associative, more playful, or easier to get absorbed in.",
+            body: "Relaxation, tingling, warmth, floating, or mild heaviness may become obvious.",
+            perception: "Music can feel fuller, colors may seem richer, and small sensory details can stand out.",
+            mood: "Euphoria, calm, amusement, or increased emotional openness are possible.",
+            coordination: "Fine coordination and reaction speed may be a little less precise.",
+            time: "Minutes can begin to feel slightly longer than they are.",
+            deeper: "At higher intensity, attention may narrow, short-term memory can get less reliable, time distortion may become more obvious, and body sensations can feel heavier or more immersive."
+          };
+        }
+
+        if (n < 5.5) {
+          return {
+            mind: "Your internal monologue may become more nonlinear, dreamy, repetitive, or deeply absorbed in whatever you are doing.",
+            body: "Body effects can become distinctly heavy, floaty, warm, tingly, or deeply relaxed.",
+            perception: "Music and visual texture may become immersive. Depth, contrast, motion, and pattern recognition may feel enhanced.",
+            mood: "Euphoria can become stronger, but emotional tone may also become more sensitive to setting and expectations.",
+            coordination: "Balance, timing, and multitasking are more likely to be noticeably impaired.",
+            time: "Time may feel stretched, segmented, or unusually slow.",
+            deeper: "Going further can bring stronger short-term memory disruption, looping thoughts, more pronounced sensory distortion, heavier body load, and a bigger chance of anxiety if the experience becomes harder to track."
+          };
+        }
+
+        if (n < 7.5) {
+          return {
+            mind: "Thoughts can become very immersive, fragmented, repetitive, symbolic, or difficult to hold onto for long.",
+            body: "Strong heaviness, couch-lock, floating, pressure, tingling, or altered body awareness may occur.",
+            perception: "Sound can feel spatial or enveloping. Visuals may seem unusually vivid, patterned, soft, or dreamlike even without true hallucinations.",
+            mood: "Euphoria can be intense, but so can self-consciousness, paranoia, or emotional amplification.",
+            coordination: "Coordination and judgment may be clearly impaired; simple tasks can feel surprisingly complicated.",
+            time: "Time distortion can become strong, with short periods feeling much longer.",
+            deeper: "At still higher intensity, reality tracking can feel less stable, thoughts may loop more aggressively, memory gaps can become more obvious, and ordinary sensations may feel exaggerated or difficult to interpret."
+          };
+        }
+
+        if (n < 9) {
+          return {
+            mind: "Thinking may feel detached, dreamlike, heavily fragmented, or difficult to organize. Short-term memory can become very unreliable.",
+            body: "The body may feel extremely heavy, distant, floaty, numb, or intensely present.",
+            perception: "Sensory input may feel overwhelming or unusually meaningful. Patterns, shadows, sounds, and internal imagery can become very absorbing.",
+            mood: "Strong euphoria is possible, but panic, paranoia, or confusion become more likely if the experience turns uncomfortable.",
+            coordination: "Coordination and situational awareness can be substantially impaired.",
+            time: "Time may feel dramatically stretched or disconnected.",
+            deeper: "Further intensity may bring stronger confusion, loss of track of what just happened, intense internal imagery, and a greater chance that the experience feels overwhelming rather than simply stronger."
+          };
+        }
+
+        return {
+          mind: "Thoughts may become extremely disorganized, repetitive, detached, or hard to distinguish from imagination.",
+          body: "Body awareness may feel profoundly altered, very heavy, distant, numb, or unusually intense.",
+          perception: "Sensory effects can become overpowering. Internal imagery, patterning, and misinterpretation of ordinary sights or sounds may become more likely.",
+          mood: "Emotions can swing quickly. Fear, paranoia, or a sense of losing control are more likely at this level.",
+          coordination: "Coordination, judgment, and awareness of surroundings may be seriously impaired.",
+          time: "Time can feel extremely distorted or difficult to track at all.",
+          deeper: "At this point, 'deeper' usually means less predictability, more confusion, and more impairment rather than simply more pleasant effects."
+        };
+      }
+
       function average(numbers) {
         return numbers.length ? numbers.reduce((a, b) => a + b, 0) / numbers.length : 0;
       }
@@ -648,21 +725,39 @@
         const strength = clamp(result.strength, 0, 10);
         const label = intensityLabel(strength);
         const effects = likelyEffects(currentHits, strength);
+        const profile = detailedProfile(strength);
+
         const effectTags = effects.length
           ? `<div class="tag-row">${effects.map(effect => `<span class="tag">${escapeHtml(effect)}</span>`).join("")}</div>`
           : `<p class="muted" style="margin-top:8px">No effect tags are close enough yet. Add more observations to make this more personal.</p>`;
 
         const confidenceText = result.confidence === "better"
-          ? "This hit count has repeated calibration entries."
+          ? "This hit count has repeated calibration entries, so the estimate is better anchored in your own history."
           : result.confidence === "medium"
-          ? "This sits inside or close to your calibration range."
-          : "This is outside or poorly covered by your calibration range, so treat it as especially uncertain.";
+          ? "This sits inside or close to your calibration range, so the estimate is mostly interpolation from your own entries."
+          : "This is outside or poorly covered by your calibration range, so the estimate is much less certain.";
 
         estimateEl.innerHTML = `
           <strong>${label} · about ${strength.toFixed(1)}/10</strong>
           <div class="meter" aria-hidden="true"><div style="width:${strength * 10}%"></div></div>
           <p class="muted" style="margin-top:9px">${confidenceText}</p>
+
           ${effectTags}
+
+          <div style="margin-top:14px; display:grid; gap:10px">
+            <div><b>Mind</b><div class="muted">${profile.mind}</div></div>
+            <div><b>Body</b><div class="muted">${profile.body}</div></div>
+            <div><b>Perception</b><div class="muted">${profile.perception}</div></div>
+            <div><b>Mood</b><div class="muted">${profile.mood}</div></div>
+            <div><b>Coordination</b><div class="muted">${profile.coordination}</div></div>
+            <div><b>Time sense</b><div class="muted">${profile.time}</div></div>
+          </div>
+
+          <div style="margin-top:14px; padding:12px; border:1px solid #d5cdbd; border-radius:9px; background:#faf6ed">
+            <b>What a deeper intensity may feel like</b>
+            <div class="muted" style="margin-top:4px">${profile.deeper}</div>
+          </div>
+
           <div class="calibration-quality">${calibrationQuality()}</div>
         `;
       }
